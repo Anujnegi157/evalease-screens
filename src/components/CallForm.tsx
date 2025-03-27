@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PhoneCall, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const CallForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,8 +33,35 @@ const CallForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Integrate with Vapi API
+      const response = await fetch("https://api.vapi.ai/call", {
+        method: 'POST',
+        headers: {
+          "Authorization": "Bearer 335f14fd-894a-44da-b89b-0c425f9dcc78",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "phoneNumberId": "0b3b9e40-1cfe-4eea-be52-a3bd0df178b8",
+          "assistantId": "b52a4a9a-a695-4f5a-a5a2-6f5aab253854",
+          "customer": {
+            "name": formData.candidateName,
+            "number": formData.candidatePhone
+          },
+          // You can include additional configuration for the call here
+          "metadata": {
+            "jobDescription": formData.jobDescription,
+            "questionnaire": formData.questionnaire
+          }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to schedule call');
+      }
+      
+      console.log('API Response:', result);
       toast.success('AI call successfully scheduled!');
       
       // Reset form
@@ -42,7 +72,8 @@ const CallForm = () => {
         questionnaire: ''
       });
     } catch (error) {
-      toast.error('Failed to schedule call. Please try again.');
+      console.error('API Error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to schedule call. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -56,18 +87,11 @@ const CallForm = () => {
             <label htmlFor="candidateName" className="text-sm font-medium text-muted-foreground">
               Candidate Name
             </label>
-            <input
+            <Input
               id="candidateName"
               name="candidateName"
-              type="text"
               value={formData.candidateName}
               onChange={handleChange}
-              className={cn(
-                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-                "text-sm ring-offset-background focus-visible:outline-none",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                "transition-colors duration-200"
-              )}
               placeholder="John Doe"
             />
           </div>
@@ -76,18 +100,12 @@ const CallForm = () => {
             <label htmlFor="candidatePhone" className="text-sm font-medium text-muted-foreground">
               Phone Number
             </label>
-            <input
+            <Input
               id="candidatePhone"
               name="candidatePhone"
               type="tel"
               value={formData.candidatePhone}
               onChange={handleChange}
-              className={cn(
-                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2",
-                "text-sm ring-offset-background focus-visible:outline-none",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                "transition-colors duration-200"
-              )}
               placeholder="+1 (123) 456-7890"
             />
           </div>
@@ -97,19 +115,14 @@ const CallForm = () => {
           <label htmlFor="jobDescription" className="text-sm font-medium text-muted-foreground">
             Job Description
           </label>
-          <textarea
+          <Textarea
             id="jobDescription"
             name="jobDescription"
             value={formData.jobDescription}
             onChange={handleChange}
             rows={4}
-            className={cn(
-              "flex w-full rounded-md border border-input bg-background px-3 py-2",
-              "text-sm ring-offset-background focus-visible:outline-none",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "transition-colors duration-200 resize-none"
-            )}
             placeholder="Enter the job description here..."
+            className="resize-none"
           />
         </div>
         
@@ -117,34 +130,22 @@ const CallForm = () => {
           <label htmlFor="questionnaire" className="text-sm font-medium text-muted-foreground">
             Questionnaire
           </label>
-          <textarea
+          <Textarea
             id="questionnaire"
             name="questionnaire"
             value={formData.questionnaire}
             onChange={handleChange}
             rows={6}
-            className={cn(
-              "flex w-full rounded-md border border-input bg-background px-3 py-2",
-              "text-sm ring-offset-background focus-visible:outline-none",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "transition-colors duration-200 resize-none"
-            )}
             placeholder="Enter questions for the AI to ask the candidate..."
+            className="resize-none"
           />
         </div>
       </div>
       
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting}
-        className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md",
-          "bg-primary px-6 py-3 text-sm font-medium text-primary-foreground",
-          "hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2",
-          "focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none",
-          "disabled:opacity-50 transition-all duration-200 w-full md:w-auto",
-          isSubmitting ? "bg-primary/80" : ""
-        )}
+        className="w-full md:w-auto"
       >
         {isSubmitting ? (
           <>
@@ -157,7 +158,7 @@ const CallForm = () => {
             Schedule AI Call
           </>
         )}
-      </button>
+      </Button>
       
       <div className="mt-4 text-xs text-muted-foreground">
         <p className="flex items-center">
