@@ -1,87 +1,63 @@
+
 import React, { useState } from 'react';
 import { Call } from '@/types';
 import CallLogItem from '@/components/CallLogItem';
 import CallDetails from '@/components/CallDetails';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 const CallLogs = () => {
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
-  // Mock data for call logs
-  const mockCalls: Call[] = [
-    {
-      id: '1',
-      candidateName: 'Michael Johnson',
-      candidatePhone: '+1 (555) 123-4567',
-      jobDescription: 'Senior Frontend Developer',
-      questionnaire: 'React experience, team collaboration, problem-solving',
-      dateTime: '2023-07-15T10:30:00',
-      status: 'completed',
-      duration: 12,
-      evaluation: {
-        score: 8.5,
-        strengths: [
-          'Strong React and TypeScript knowledge',
-          'Excellent problem-solving skills',
-          'Good communication abilities'
-        ],
-        weaknesses: [
-          'Limited backend experience',
-          'Could improve on system design knowledge'
-        ],
-        recommendation: 'Michael would be a great addition to the frontend team. His React skills are strong and he communicates well.',
-        fit: 'high'
+  // Fetch call logs from the API
+  const { data: apiCalls, isLoading, error } = useQuery({
+    queryKey: ['callLogs'],
+    queryFn: async () => {
+      const response = await fetch("https://api.vapi.ai/call", {
+        method: "GET",
+        headers: {
+          "Authorization": "Bearer 335f14fd-894a-44da-b89b-0c425f9dcc78"
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch call logs');
       }
-    },
-    {
-      id: '2',
-      candidateName: 'Sarah Wilson',
-      candidatePhone: '+1 (555) 987-6543',
-      jobDescription: 'Product Manager',
-      questionnaire: 'Product strategy, team leadership, market analysis',
-      dateTime: '2023-07-16T14:00:00',
-      status: 'completed',
-      duration: 15,
-      evaluation: {
-        score: 7.2,
-        strengths: [
-          'Good understanding of product development',
-          'Previous experience with agile methodologies',
-          'Strong analytical skills'
-        ],
-        weaknesses: [
-          'Could improve on stakeholder management',
-          'Limited technical background'
-        ],
-        recommendation: 'Sarah shows potential but may need additional support on technical aspects of product management.',
-        fit: 'medium'
-      }
-    },
-    {
-      id: '3',
-      candidateName: 'David Chen',
-      candidatePhone: '+1 (555) 456-7890',
-      jobDescription: 'Backend Developer',
-      questionnaire: 'Node.js experience, database design, API development',
-      dateTime: '2023-07-18T09:15:00',
-      status: 'scheduled'
-    },
-    {
-      id: '4',
-      candidateName: 'Emily Rodriguez',
-      candidatePhone: '+1 (555) 234-5678',
-      jobDescription: 'UX Designer',
-      questionnaire: 'Design process, user research, prototyping tools',
-      dateTime: '2023-07-14T11:00:00',
-      status: 'missed'
+      
+      const data = await response.json();
+      return data;
     }
-  ];
+  });
+  
+  // Transform API data to match our Call type structure
+  const transformedCalls: Call[] = React.useMemo(() => {
+    if (!apiCalls) return [];
+    
+    return apiCalls.map((call: any) => ({
+      id: call.id,
+      candidateName: call.customer?.name || 'Unknown',
+      candidatePhone: call.customer?.number || 'No number',
+      jobDescription: 'Job details unavailable', // These fields aren't in the API response
+      questionnaire: 'Questionnaire unavailable', // These fields aren't in the API response
+      dateTime: call.createdAt,
+      status: call.status === 'ended' ? 'completed' : 
+              call.status === 'queued' ? 'scheduled' : 'missed',
+      duration: call.duration ? Math.ceil(call.duration / 60) : undefined, // Convert seconds to minutes
+      evaluation: call.status === 'ended' ? {
+        score: 0, // Default values since API doesn't provide evaluation
+        strengths: [],
+        weaknesses: [],
+        recommendation: '',
+        fit: 'medium' as 'high' | 'medium' | 'low'
+      } : undefined
+    }));
+  }, [apiCalls]);
   
   // Filter and search logic
-  const filteredCalls = mockCalls
+  const filteredCalls = transformedCalls
     .filter(call => 
       statusFilter === 'all' || call.status === statusFilter
     )
@@ -97,6 +73,10 @@ const CallLogs = () => {
   const handleCloseDetails = () => {
     setSelectedCall(null);
   };
+
+  // For debugging
+  console.log('API Calls:', apiCalls);
+  console.log('Transformed Calls:', transformedCalls);
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
@@ -140,22 +120,39 @@ const CallLogs = () => {
         </div>
       </div>
       
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading call logs...</span>
+        </div>
+      )}
+      
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+          <p className="text-red-500">Failed to load call logs. Please try again later.</p>
+        </div>
+      )}
+      
       {/* Call Logs List */}
-      <div className="space-y-4">
-        {filteredCalls.length > 0 ? (
-          filteredCalls.map(call => (
-            <CallLogItem 
-              key={call.id} 
-              call={call} 
-              onClick={handleCallClick}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12 bg-white rounded-lg border">
-            <p className="text-muted-foreground">No calls found matching your criteria</p>
-          </div>
-        )}
-      </div>
+      {!isLoading && !error && (
+        <div className="space-y-4">
+          {filteredCalls.length > 0 ? (
+            filteredCalls.map(call => (
+              <CallLogItem 
+                key={call.id} 
+                call={call} 
+                onClick={handleCallClick}
+              />
+            ))
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg border">
+              <p className="text-muted-foreground">No calls found matching your criteria</p>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Call Details Modal */}
       {selectedCall && (
