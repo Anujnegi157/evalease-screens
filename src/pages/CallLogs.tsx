@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Call } from '@/types';
 import CallLogItem from '@/components/CallLogItem';
@@ -68,8 +67,7 @@ const CallLogs = () => {
       jobDescription: 'Backend Developer',
       questionnaire: 'Node.js experience, database design, API development',
       dateTime: '2023-07-18T09:15:00',
-      status: 'scheduled',
-      questionnaire: 'Node.js experience, database design, API development'
+      status: 'scheduled'
     },
     {
       id: '4',
@@ -78,8 +76,7 @@ const CallLogs = () => {
       jobDescription: 'UX Designer',
       questionnaire: 'Design process, user research, prototyping tools',
       dateTime: '2023-07-14T11:00:00',
-      status: 'missed',
-      questionnaire: 'Design process, user research, prototyping tools'
+      status: 'missed'
     }
   ];
   
