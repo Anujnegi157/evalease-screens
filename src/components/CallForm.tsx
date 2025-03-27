@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PhoneCall, Check, Loader2 } from 'lucide-react';
@@ -46,11 +45,6 @@ const CallForm = () => {
           "customer": {
             "name": formData.candidateName,
             "number": formData.candidatePhone
-          },
-          // You can include additional configuration for the call here
-          "metadata": {
-            "jobDescription": formData.jobDescription,
-            "questionnaire": formData.questionnaire
           }
         })
       });
