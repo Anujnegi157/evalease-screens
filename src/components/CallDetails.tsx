@@ -48,7 +48,7 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
   } catch (e) {
     formattedTime = '';
   }
-
+  console.log(call.toString())
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in">
@@ -104,6 +104,12 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
                   <div>
                     <p className="text-xs text-muted-foreground">Duration</p>
                     <p className="font-medium">{call.duration} minutes</p>
+                  </div>
+                )}
+                {call.transcript && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Duration</p>
+                    <p className="font-medium">{call.transcript} minutes</p>
                   </div>
                 )}
               </div>

@@ -46,6 +46,9 @@ const CallLogs = () => {
       status: call.status === 'ended' ? 'completed' : 
               call.status === 'queued' ? 'scheduled' : 'missed',
       duration: call.duration ? Math.ceil(call.duration / 60) : undefined, // Convert seconds to minutes
+      transcript: call.transcript,
+      recordingUrl: call.recordingUrl,
+      summary: call.summary,
       evaluation: call.status === 'ended' ? {
         score: 0, // Default values since API doesn't provide evaluation
         strengths: [],

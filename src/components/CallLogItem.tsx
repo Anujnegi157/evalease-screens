@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Call } from '@/types';
 import { cn } from '@/lib/utils';
@@ -12,8 +11,8 @@ interface CallLogItemProps {
 
 const CallLogItem: React.FC<CallLogItemProps> = ({ call, onClick }) => {
   const statusIcons = {
-    completed: <CheckCircle size={16} className="text-green-500" />,
-    scheduled: <Clock size={16} className="text-amber-500" />,
+    completed: <CheckCircle size={16} className="text-green-500" />, 
+    scheduled: <Clock size={16} className="text-amber-500" />, 
     missed: <XCircle size={16} className="text-red-500" />
   };
 
@@ -46,7 +45,7 @@ const CallLogItem: React.FC<CallLogItemProps> = ({ call, onClick }) => {
         <div className="space-y-1">
           <h3 className="font-medium text-foreground">{call.candidateName}</h3>
           <p className="text-sm text-muted-foreground">{call.candidatePhone}</p>
-          <p className="text-xs text-muted-foreground">{formattedDate}</p>
+          <p className="text-xs text-muted-foreground">{call.duration}</p>
         </div>
 
         <div className="flex flex-col items-end">
@@ -86,6 +85,21 @@ const CallLogItem: React.FC<CallLogItemProps> = ({ call, onClick }) => {
           <ChevronRight size={16} />
         </button>
       </div>
+      
+      <div className="mt-2">
+        <h4 className="font-medium">Summary</h4>
+        <p className="text-sm text-muted-foreground">{call.summary}</p>
+      </div>
+      
+      {call.recordingUrl && (
+        <div className="mt-2">
+          <h4 className="font-medium">Call Recording</h4>
+          <audio controls className="w-full">
+            <source src={call.recordingUrl} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )}
     </div>
   );
 };

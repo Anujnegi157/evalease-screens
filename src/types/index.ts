@@ -18,6 +18,8 @@ export interface Call {
   status: 'completed' | 'scheduled' | 'missed';
   duration?: number;
   transcript?: string;
+  recordingUrl?: string;
+  summary?:string;
   evaluation?: {
     score: number;
     strengths: string[];
