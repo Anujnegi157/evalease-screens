@@ -36,14 +36,14 @@ export const generateContentFromJobDescription = async (jobDescription: string):
             {
               "mandatorySkills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
               "goodToHave": ["skill1", "skill2", "skill3", "skill4"],
-              "questionnaire": "1. Question 1?\\n2. Question 2?\\n3. Question 3?\\n4. Question 4?\\n5. Question 5?"
+              "questionnaire": ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
             }
             
             Job Description:
             ${jobDescription}`
           }
         ],
-        temperature: 0.7,
+        // temperature: 0.7,
         max_completion_tokens: 800  // Changed from max_tokens to max_completion_tokens
       })
     });
