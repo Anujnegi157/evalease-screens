@@ -1,7 +1,8 @@
+
 // Service to generate content using Azure OpenAI
 const AZURE_OPENAI_ENDPOINT = "https://personal-job-application.openai.azure.com/";
 const AZURE_OPENAI_API_KEY = "6Y6gLak1ld4teJNNi7QhStZUI1HXrvKCnwGY9mSiH0T0jfHYNcIpJQQJ99BCACYeBjFXJ3w3AAABACOGUilw";
-const AZURE_OPENAI_API_VERSION = "2023-05-15"; // Use the appropriate API version
+const AZURE_OPENAI_API_VERSION = "2025-01-01-preview"; // Updated API version
 
 export const generateContentFromJobDescription = async (jobDescription: string): Promise<{
   mandatorySkills: string[];
@@ -11,8 +12,8 @@ export const generateContentFromJobDescription = async (jobDescription: string):
   try {
     console.log("Generating content from job description using Azure OpenAI:", jobDescription);
     
-    // Call Azure OpenAI API - removed hyphen from deployment name (changed from "gpt-4" to "gpt4")
-    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/gpt4/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
+    // Call Azure OpenAI API with the updated deployment name and API version
+    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/o3-mini/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
