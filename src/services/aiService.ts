@@ -1,35 +1,105 @@
+// Service to generate content using Azure OpenAI
+const AZURE_OPENAI_ENDPOINT = "https://personal-job-application.openai.azure.com/";
+const AZURE_OPENAI_API_KEY = "6Y6gLak1ld4teJNNi7QhStZUI1HXrvKCnwGY9mSiH0T0jfHYNcIpJQQJ99BCACYeBjFXJ3w3AAABACOGUilw";
+const AZURE_OPENAI_API_VERSION = "2023-05-15"; // Use the appropriate API version
 
-// Simple service to generate content using AI
 export const generateContentFromJobDescription = async (jobDescription: string): Promise<{
   mandatorySkills: string[];
   goodToHave: string[];
   questionnaire: string;
 }> => {
   try {
-    // In a real implementation, this would call an AI service like OpenAI
-    // For now, we'll use a simple simulation
-    console.log("Generating content from job description:", jobDescription);
+    console.log("Generating content from job description using Azure OpenAI:", jobDescription);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Call Azure OpenAI API
+    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/gpt-4/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": AZURE_OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: "You are an HR assistant that analyzes job descriptions to extract key information."
+          },
+          {
+            role: "user",
+            content: `Please analyze this job description and provide the following: 
+            1. A list of 5 mandatory skills required for this position
+            2. A list of 3-4 good to have skills 
+            3. A short questionnaire with 5 relevant questions to ask candidates
+            
+            Format your response as JSON with the following structure:
+            {
+              "mandatorySkills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
+              "goodToHave": ["skill1", "skill2", "skill3", "skill4"],
+              "questionnaire": "1. Question 1?\\n2. Question 2?\\n3. Question 3?\\n4. Question 4?\\n5. Question 5?"
+            }
+            
+            Job Description:
+            ${jobDescription}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+      })
+    });
     
-    // Extract skills and generate questionnaire based on the job description
-    const mandatorySkills = extractMandatorySkills(jobDescription);
-    const goodToHave = extractGoodToHaveSkills(jobDescription);
-    const questionnaire = generateQuestionnaire(jobDescription);
+    if (!response.ok) {
+      console.error("Azure OpenAI API Error:", await response.text());
+      throw new Error("Failed to generate content from job description");
+    }
     
-    return {
-      mandatorySkills,
-      goodToHave,
-      questionnaire
-    };
+    const data = await response.json();
+    console.log("Azure OpenAI API Response:", data);
+    
+    try {
+      // Try to parse the response from the completion
+      const content = data.choices[0].message.content;
+      console.log("Raw content:", content);
+      
+      // Extract the JSON part from the content if needed
+      let jsonData;
+      try {
+        jsonData = JSON.parse(content);
+      } catch (jsonError) {
+        // If parsing fails, try to extract JSON from the text using regex
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("Could not parse JSON from response");
+        }
+      }
+      
+      return {
+        mandatorySkills: jsonData.mandatorySkills || [],
+        goodToHave: jsonData.goodToHave || [],
+        questionnaire: jsonData.questionnaire || ""
+      };
+    } catch (parseError) {
+      console.error("Error parsing AI response:", parseError);
+      // Fallback to the old extraction method if parsing fails
+      return {
+        mandatorySkills: extractMandatorySkills(jobDescription),
+        goodToHave: extractGoodToHaveSkills(jobDescription),
+        questionnaire: generateQuestionnaire(jobDescription)
+      };
+    }
   } catch (error) {
     console.error("Error generating content:", error);
-    throw new Error("Failed to generate content from job description");
+    // Fallback to the old extraction method
+    return {
+      mandatorySkills: extractMandatorySkills(jobDescription),
+      goodToHave: extractGoodToHaveSkills(jobDescription),
+      questionnaire: generateQuestionnaire(jobDescription)
+    };
   }
 };
 
-// Helper functions to simulate AI extraction
+// Keep the helper functions as fallback
 function extractMandatorySkills(text: string): string[] {
   const skills = [];
   
@@ -91,3 +161,19 @@ function generateQuestionnaire(text: string): string {
 5. What's your experience with collaborative development and version control?
 `.trim();
 }
+
+// Add new functions to allow manual management of skills
+export const addSkill = (skillsList: string[], newSkill: string): string[] => {
+  if (!newSkill.trim() || skillsList.includes(newSkill.trim())) {
+    return skillsList;
+  }
+  return [...skillsList, newSkill.trim()];
+};
+
+export const removeSkill = (skillsList: string[], skillToRemove: string): string[] => {
+  return skillsList.filter(skill => skill !== skillToRemove);
+};
+
+export const updateQuestionnaire = (currentQuestionnaire: string, newQuestionnaire: string): string => {
+  return newQuestionnaire.trim();
+};

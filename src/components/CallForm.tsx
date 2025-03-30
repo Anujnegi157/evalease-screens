@@ -1,18 +1,26 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { PhoneCall, Check, Loader2, ListChecks } from 'lucide-react';
+import { PhoneCall, Check, Loader2, ListChecks, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import PdfUploader from './PdfUploader';
-import { generateContentFromJobDescription } from '@/services/aiService';
+import { 
+  generateContentFromJobDescription, 
+  addSkill, 
+  removeSkill, 
+  updateQuestionnaire 
+} from '@/services/aiService';
 import { Badge } from '@/components/ui/badge';
 
 const CallForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [newSkill, setNewSkill] = useState('');
+  const [skillType, setSkillType] = useState<'mandatory' | 'goodToHave'>('mandatory');
+  
   const [formData, setFormData] = useState({
     candidateName: '',
     candidatePhone: '',
@@ -32,6 +40,7 @@ const CallForm = () => {
       setFormData(prev => ({ ...prev, jobDescription: content }));
       
       // Generate skills and questionnaire from the content
+      setIsProcessing(true);
       const generatedContent = await generateContentFromJobDescription(content);
       
       setMandatorySkills(generatedContent.mandatorySkills);
@@ -42,9 +51,60 @@ const CallForm = () => {
     } catch (error) {
       console.error('Error generating content:', error);
       toast.error('Failed to generate job requirements and questionnaire');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
+  const handleAddSkill = () => {
+    if (!newSkill.trim()) {
+      toast.error('Please enter a skill');
+      return;
+    }
+    
+    if (skillType === 'mandatory') {
+      setMandatorySkills(addSkill(mandatorySkills, newSkill));
+    } else {
+      setGoodToHave(addSkill(goodToHave, newSkill));
+    }
+    
+    setNewSkill('');
+    toast.success(`Added ${newSkill} to ${skillType === 'mandatory' ? 'mandatory skills' : 'good to have skills'}`);
+  };
+
+  const handleRemoveSkill = (skill: string, type: 'mandatory' | 'goodToHave') => {
+    if (type === 'mandatory') {
+      setMandatorySkills(removeSkill(mandatorySkills, skill));
+    } else {
+      setGoodToHave(removeSkill(goodToHave, skill));
+    }
+    
+    toast.success(`Removed ${skill}`);
+  };
+
+  const handleGenerateFromDescription = async () => {
+    if (!formData.jobDescription.trim()) {
+      toast.error('Please enter a job description');
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      const generatedContent = await generateContentFromJobDescription(formData.jobDescription);
+      
+      setMandatorySkills(generatedContent.mandatorySkills);
+      setGoodToHave(generatedContent.goodToHave);
+      setFormData(prev => ({ ...prev, questionnaire: generatedContent.questionnaire }));
+      
+      toast.success('Job requirements and questionnaire generated');
+    } catch (error) {
+      console.error('Error generating content:', error);
+      toast.error('Failed to generate job requirements and questionnaire');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -137,11 +197,26 @@ const CallForm = () => {
             <label htmlFor="jobDescription" className="text-sm font-medium text-muted-foreground">
               Job Description
             </label>
-            <PdfUploader 
-              onPdfContent={handlePdfContent} 
-              isProcessing={isProcessing}
-              setIsProcessing={setIsProcessing}
-            />
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                size="sm" 
+                variant="outline"
+                onClick={handleGenerateFromDescription}
+                disabled={isProcessing || !formData.jobDescription.trim()}
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>Generate with AI</>
+                )}
+              </Button>
+              <PdfUploader 
+                onPdfContent={handlePdfContent} 
+                isProcessing={isProcessing}
+                setIsProcessing={setIsProcessing}
+              />
+            </div>
           </div>
           <Textarea
             id="jobDescription"
@@ -154,37 +229,94 @@ const CallForm = () => {
           />
         </div>
         
-        {mandatorySkills.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <ListChecks className="h-4 w-4" />
-              Mandatory Skills
-            </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <ListChecks className="h-4 w-4" />
+                Mandatory Skills
+              </h3>
+              <Button 
+                type="button" 
+                size="sm" 
+                variant="outline" 
+                onClick={() => setSkillType('mandatory')}
+                className={skillType === 'mandatory' ? 'bg-primary text-primary-foreground' : ''}
+              >
+                Add to mandatory
+              </Button>
+            </div>
+            
             <div className="flex flex-wrap gap-2">
               {mandatorySkills.map((skill, index) => (
-                <Badge key={index} variant="outline" className="bg-primary/10">
+                <Badge key={index} variant="outline" className="bg-primary/10 flex items-center gap-1">
                   {skill}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveSkill(skill, 'mandatory')}
+                    className="hover:text-destructive focus:outline-none"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </Badge>
               ))}
+              {mandatorySkills.length === 0 && (
+                <p className="text-xs text-muted-foreground italic">No mandatory skills added yet</p>
+              )}
             </div>
           </div>
-        )}
-        
-        {goodToHave.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <ListChecks className="h-4 w-4" />
-              Good to Have
-            </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <ListChecks className="h-4 w-4" />
+                Good to Have
+              </h3>
+              <Button 
+                type="button" 
+                size="sm" 
+                variant="outline"
+                onClick={() => setSkillType('goodToHave')}
+                className={skillType === 'goodToHave' ? 'bg-primary text-primary-foreground' : ''}
+              >
+                Add to good-to-have
+              </Button>
+            </div>
+            
             <div className="flex flex-wrap gap-2">
               {goodToHave.map((skill, index) => (
-                <Badge key={index} variant="outline" className="bg-secondary/10">
+                <Badge key={index} variant="outline" className="bg-secondary/10 flex items-center gap-1">
                   {skill}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveSkill(skill, 'goodToHave')}
+                    className="hover:text-destructive focus:outline-none"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </Badge>
               ))}
+              {goodToHave.length === 0 && (
+                <p className="text-xs text-muted-foreground italic">No good-to-have skills added yet</p>
+              )}
             </div>
           </div>
-        )}
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add new skill"
+              value={newSkill}
+              onChange={(e) => setNewSkill(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
+            />
+            <Button type="button" onClick={handleAddSkill} size="sm">
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </div>
         
         <div className="space-y-2">
           <label htmlFor="questionnaire" className="text-sm font-medium text-muted-foreground">
