@@ -11,8 +11,8 @@ export const generateContentFromJobDescription = async (jobDescription: string):
   try {
     console.log("Generating content from job description using Azure OpenAI:", jobDescription);
     
-    // Call Azure OpenAI API
-    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/gpt-4/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
+    // Call Azure OpenAI API - removed hyphen from deployment name (changed from "gpt-4" to "gpt4")
+    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/gpt4/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
