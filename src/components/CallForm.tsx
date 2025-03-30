@@ -1,23 +1,48 @@
+
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { PhoneCall, Check, Loader2 } from 'lucide-react';
+import { PhoneCall, Check, Loader2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import PdfUploader from './PdfUploader';
+import { generateContentFromJobDescription } from '@/services/aiService';
+import { Badge } from '@/components/ui/badge';
 
 const CallForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     candidateName: '',
     candidatePhone: '',
     jobDescription: '',
     questionnaire: ''
   });
+  const [mandatorySkills, setMandatorySkills] = useState<string[]>([]);
+  const [goodToHave, setGoodToHave] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePdfContent = async (content: string) => {
+    try {
+      setFormData(prev => ({ ...prev, jobDescription: content }));
+      
+      // Generate skills and questionnaire from the content
+      const generatedContent = await generateContentFromJobDescription(content);
+      
+      setMandatorySkills(generatedContent.mandatorySkills);
+      setGoodToHave(generatedContent.goodToHave);
+      setFormData(prev => ({ ...prev, questionnaire: generatedContent.questionnaire }));
+      
+      toast.success('Job requirements and questionnaire generated');
+    } catch (error) {
+      console.error('Error generating content:', error);
+      toast.error('Failed to generate job requirements and questionnaire');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +90,8 @@ const CallForm = () => {
         jobDescription: '',
         questionnaire: ''
       });
+      setMandatorySkills([]);
+      setGoodToHave([]);
     } catch (error) {
       console.error('API Error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to schedule call. Please try again.');
@@ -106,19 +133,58 @@ const CallForm = () => {
         </div>
         
         <div className="space-y-2">
-          <label htmlFor="jobDescription" className="text-sm font-medium text-muted-foreground">
-            Job Description
-          </label>
+          <div className="flex justify-between items-center">
+            <label htmlFor="jobDescription" className="text-sm font-medium text-muted-foreground">
+              Job Description
+            </label>
+            <PdfUploader 
+              onPdfContent={handlePdfContent} 
+              isProcessing={isProcessing}
+              setIsProcessing={setIsProcessing}
+            />
+          </div>
           <Textarea
             id="jobDescription"
             name="jobDescription"
             value={formData.jobDescription}
             onChange={handleChange}
             rows={4}
-            placeholder="Enter the job description here..."
+            placeholder="Enter the job description here or upload a PDF..."
             className="resize-none"
           />
         </div>
+        
+        {mandatorySkills.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              Mandatory Skills
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {mandatorySkills.map((skill, index) => (
+                <Badge key={index} variant="outline" className="bg-primary/10">
+                  {skill}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {goodToHave.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              Good to Have
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {goodToHave.map((skill, index) => (
+                <Badge key={index} variant="outline" className="bg-secondary/10">
+                  {skill}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
         
         <div className="space-y-2">
           <label htmlFor="questionnaire" className="text-sm font-medium text-muted-foreground">
@@ -138,7 +204,7 @@ const CallForm = () => {
       
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isProcessing}
         className="w-full md:w-auto"
       >
         {isSubmitting ? (
