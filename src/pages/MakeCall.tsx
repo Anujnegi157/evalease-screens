@@ -31,7 +31,7 @@ const MakeCall = () => {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Call flow</p>
-            <p className="font-medium">Introduction → Questions → Wrap-up</p>
+            <p className="font-medium">Introduction → Skills & Experience → Notice Period → Wrap-up</p>
           </div>
         </Card>
       </div>

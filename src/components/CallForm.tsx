@@ -38,7 +38,7 @@ const CallForm = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Add default questions that should always be present
+  // Define default questions that should always be present
   const defaultQuestions = [
     "Tell me about yourself and your professional background.",
     "What is your current notice period?"
@@ -180,6 +180,22 @@ const CallForm = () => {
       // Create the closing message
       const closingMessage = `Thank you, ${formData.candidateName}! We will review your responses and get back to you soon regarding next steps. Have a great day!`;
       
+      // Make sure introduction and notice period questions are included
+      const introQuestion = "Tell me about yourself and your professional background.";
+      const noticePeriodQuestion = "What is your current notice period?";
+      
+      let finalQuestionnaire = [...questionnaire];
+      
+      // Ensure intro question exists
+      if (!finalQuestionnaire.some(q => q.toLowerCase().includes("tell me about yourself"))) {
+        finalQuestionnaire = [introQuestion, ...finalQuestionnaire];
+      }
+      
+      // Ensure notice period question exists
+      if (!finalQuestionnaire.some(q => q.toLowerCase().includes("notice period"))) {
+        finalQuestionnaire.push(noticePeriodQuestion);
+      }
+      
       // Integrate with Vapi API
       const response = await fetch("https://api.vapi.ai/call", {
         method: 'POST',
@@ -190,7 +206,7 @@ const CallForm = () => {
         body: JSON.stringify({
           "phoneNumberId": "0b3b9e40-1cfe-4eea-be52-a3bd0df178b8",
           "assistant": {
-            "firstMessage": "",
+            "firstMessage": firstMessage,
             "model": {
               "provider": "openai",
               "model": "chatgpt-4o-latest",
@@ -216,11 +232,7 @@ const CallForm = () => {
                   - Make natural transitions between questions
                   - Conclude the call gracefully when all questions have been asked`
                 },
-                {
-                  "role": "assistant",
-                  "content": firstMessage
-                },
-                ...questionnaire.map(question => ({
+                ...finalQuestionnaire.map(question => ({
                   "role": "assistant", 
                   "content": question
                 })),
