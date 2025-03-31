@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PhoneCall, Check, Loader2, ListChecks, Plus, X, Edit, Trash2 } from 'lucide-react';
@@ -38,24 +37,42 @@ const CallForm = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Add default questions that should always be present
+  const defaultQuestions = [
+    "Tell me about yourself and your professional background.",
+    "What is your current notice period?"
+  ];
+  
+  // Ensure default questions are added to any generated questionnaire
+  const ensureDefaultQuestions = (questions: string[]) => {
+    const result = [...questions];
+    
+    // Add default questions if they don't exist (or similar ones)
+    defaultQuestions.forEach(defaultQ => {
+      const lowerDefaultQ = defaultQ.toLowerCase();
+      const exists = result.some(q => 
+        q.toLowerCase().includes("tell me about yourself") || 
+        q.toLowerCase().includes("notice period")
+      );
+      
+      if (!exists) {
+        result.push(defaultQ);
+      }
+    });
+    
+    return result;
+  };
+
   const handlePdfContent = async (content: string) => {
     try {
       setFormData(prev => ({ ...prev, jobDescription: content }));
       
-      // Generate skills and questionnaire from the content
-      setIsProcessing(true);
-      const generatedContent = await generateContentFromJobDescription(content);
+      // PDF uploader now just extracts content without calling AI
+      // User will need to click "Generate with AI" button explicitly
       
-      setMandatorySkills(generatedContent.mandatorySkills);
-      setGoodToHave(generatedContent.goodToHave);
-      setQuestionnaire(generatedContent.questionnaire);
-      
-      toast.success('Job requirements and questionnaire generated');
     } catch (error) {
-      console.error('Error generating content:', error);
-      toast.error('Failed to generate job requirements and questionnaire');
-    } finally {
-      setIsProcessing(false);
+      console.error('Error processing PDF content:', error);
+      toast.error('Failed to process PDF content');
     }
   };
 
@@ -129,7 +146,10 @@ const CallForm = () => {
       
       setMandatorySkills(generatedContent.mandatorySkills);
       setGoodToHave(generatedContent.goodToHave);
-      setQuestionnaire(generatedContent.questionnaire);
+      
+      // Ensure default questions are included
+      const enhancedQuestionnaire = ensureDefaultQuestions(generatedContent.questionnaire);
+      setQuestionnaire(enhancedQuestionnaire);
       
       toast.success('Job requirements and questionnaire generated');
     } catch (error) {
@@ -152,8 +172,15 @@ const CallForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Format the questionnaire as a string for the API
-      const formattedQuestionnaire = questionnaire.join('\n\n');
+      // Format skills for the API
+      const formattedMandatorySkills = mandatorySkills.join(", ");
+      const formattedGoodToHave = goodToHave.join(", ");
+      
+      // Create the initial greeting message
+      const firstMessage = "Hi, this is Neha from the recruitment team. I'm calling regarding your job application. This is a brief screening call to understand your experience and skills better. Is this a good time to talk?";
+      
+      // Create a well-structured closing message
+      const closingMessage = "Thank you for your time and sharing your experience with me. Our HR team will review your responses and get in touch with you soon regarding next steps. Have a great day!";
       
       // Integrate with Vapi API
       const response = await fetch("https://api.vapi.ai/call", {
@@ -172,26 +199,35 @@ const CallForm = () => {
                 {
                   "role": "system",
                   "content": `You are Neha, an AI representative conducting initial screening calls for a job position. Use a clear, professional, and friendly tone.
+                  
                   Job Description:
                   ${formData.jobDescription}
                   
                   Required Skills:
-                  ${mandatorySkills.join(", ")}
+                  ${formattedMandatorySkills}
                   
                   Good to Have Skills:
-                  ${goodToHave.join(", ")}`
+                  ${formattedGoodToHave}
+                  
+                  Instructions:
+                  - Keep your responses concise and conversational
+                  - Ask follow-up questions when needed to get more specific information
+                  - Don't use technical jargon unless relevant to the position
+                  - Be polite and patient, allowing the candidate to fully explain their answers
+                  - Make natural transitions between questions
+                  - Conclude the call gracefully when all questions have been asked`
                 },
                 {
                   "role": "assistant",
-                  "content": "Hi, this is Neha. I'm calling regarding your job application. This is a brief screening call to understand your experience and skills. Let's get started! Are you available to speak now?"
+                  "content": firstMessage
                 },
                 ...questionnaire.map(question => ({
-                  "role": "assistant",
+                  "role": "assistant", 
                   "content": question
                 })),
                 {
                   "role": "assistant",
-                  "content": "Thank you for your time! We will review your responses and get back to you soon. Have a great day!"
+                  "content": closingMessage
                 }
               ]
             }
