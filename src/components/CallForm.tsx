@@ -126,12 +126,18 @@ const CallForm = () => {
         },
         body: JSON.stringify({
           "phoneNumberId": "0b3b9e40-1cfe-4eea-be52-a3bd0df178b8",
-          "assistantId": "b52a4a9a-a695-4f5a-a5a2-6f5aab253854",
-          "customer": {
-            "name": formData.candidateName,
-            "number": formData.candidatePhone
-          }
-        })
+          "assistant": {
+            "model": {
+              "provider": "openai",
+              "model": "chatgpt-4o-latest",
+            
+            }
+          },
+        "customer": {
+                "name": formData.candidateName,
+                "number": formData.candidatePhone
+              }
+      }),
       });
       
       const result = await response.json();
