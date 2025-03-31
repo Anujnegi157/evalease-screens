@@ -43,7 +43,6 @@ export const generateContentFromJobDescription = async (jobDescription: string):
             ${jobDescription}`
           }
         ],
-        temperature: 0.7,
         max_completion_tokens: 1000
       })
     });
