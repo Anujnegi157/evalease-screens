@@ -28,13 +28,12 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({
     }
     
     setFileName(file.name);
-    setIsProcessing(true);
     
     try {
       // In a real implementation, we would use a PDF parsing library
       // For now, we'll simulate extracting text from a PDF
       
-      // Simulate processing time
+      // Simulate processing time for PDF parsing
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Create a mock text content from the PDF file name
@@ -64,14 +63,16 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({
         - CI/CD pipeline experience
       `.trim();
       
-      // Pass the "extracted" content back to the parent
+      // Pass the "extracted" content to parent component
       onPdfContent(mockPdfContent);
-      toast.success('Job description processed successfully');
+      
+      // Note: We don't call the AI service directly from here anymore
+      // The user will need to click the "Generate with AI" button
+      
+      toast.success('PDF content extracted successfully');
     } catch (error) {
       console.error('Error processing PDF:', error);
       toast.error('Failed to process PDF file');
-    } finally {
-      setIsProcessing(false);
     }
   };
 

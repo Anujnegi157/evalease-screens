@@ -1,4 +1,3 @@
-
 // Service to generate content using Azure OpenAI
 const AZURE_OPENAI_ENDPOINT = "https://personal-job-application.openai.azure.com/";
 const AZURE_OPENAI_API_KEY = "6Y6gLak1ld4teJNNi7QhStZUI1HXrvKCnwGY9mSiH0T0jfHYNcIpJQQJ99BCACYeBjFXJ3w3AAABACOGUilw";
@@ -43,7 +42,7 @@ export const generateContentFromJobDescription = async (jobDescription: string):
             ${jobDescription}`
           }
         ],
-        max_completion_tokens: 1000
+        max_completion_tokens: 2000
       })
     });
     
