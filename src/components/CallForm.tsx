@@ -31,6 +31,7 @@ const CallForm = () => {
   const [mandatorySkills, setMandatorySkills] = useState<string[]>([]);
   const [goodToHave, setGoodToHave] = useState<string[]>([]);
   const [questionnaire, setQuestionnaire] = useState<string[]>([]);
+  const [firstMessage, setFirstMessage] = useState("Hi, this is Neha from the recruitment team. I'm calling regarding your job application. This is a brief screening call to understand your experience and skills. Is this a good time to talk?");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -176,11 +177,8 @@ const CallForm = () => {
       const formattedMandatorySkills = mandatorySkills.join(", ");
       const formattedGoodToHave = goodToHave.join(", ");
       
-      // Create the initial greeting message
-      const firstMessage = "Hi, this is Neha from the recruitment team. I'm calling regarding your job application. This is a brief screening call to understand your experience and skills better. Is this a good time to talk?";
-      
-      // Create a well-structured closing message
-      const closingMessage = "Thank you for your time and sharing your experience with me. Our HR team will review your responses and get in touch with you soon regarding next steps. Have a great day!";
+      // Create the closing message
+      const closingMessage = `Thank you, ${formData.candidateName}! We will review your responses and get back to you soon regarding next steps. Have a great day!`;
       
       // Integrate with Vapi API
       const response = await fetch("https://api.vapi.ai/call", {
@@ -192,6 +190,7 @@ const CallForm = () => {
         body: JSON.stringify({
           "phoneNumberId": "0b3b9e40-1cfe-4eea-be52-a3bd0df178b8",
           "assistant": {
+            "firstMessage": "",
             "model": {
               "provider": "openai",
               "model": "chatgpt-4o-latest",
@@ -295,6 +294,23 @@ const CallForm = () => {
               placeholder="+1 (123) 456-7890"
             />
           </div>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label htmlFor="firstMessage" className="text-sm font-medium text-muted-foreground">
+              Introduction Message
+            </label>
+          </div>
+          <Textarea
+            id="firstMessage"
+            value={firstMessage}
+            onChange={(e) => setFirstMessage(e.target.value)}
+            rows={2}
+            placeholder="Enter the introduction message..."
+            className="resize-none"
+          />
+          <p className="text-xs text-muted-foreground">This is the first message the AI will use to introduce itself to the candidate.</p>
         </div>
         
         <div className="space-y-2">

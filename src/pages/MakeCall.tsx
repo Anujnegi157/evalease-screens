@@ -2,7 +2,7 @@
 import React from 'react';
 import CallForm from '@/components/CallForm';
 import Card from '@/components/Card';
-import { User, Phone } from 'lucide-react';
+import { User, Phone, MessageCircle } from 'lucide-react';
 
 const MakeCall = () => {
   return (
@@ -27,11 +27,11 @@ const MakeCall = () => {
         
         <Card className="p-4 md:col-span-2 flex items-center">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-            <Phone size={20} className="text-primary" />
+            <MessageCircle size={20} className="text-primary" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Available minutes</p>
-            <p className="font-medium">120 minutes (approx. 24 calls)</p>
+            <p className="text-sm text-muted-foreground">Call flow</p>
+            <p className="font-medium">Introduction → Questions → Wrap-up</p>
           </div>
         </Card>
       </div>
