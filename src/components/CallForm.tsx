@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { PhoneCall, Check, Loader2, ListChecks, Plus, X } from 'lucide-react';
+import { PhoneCall, Check, Loader2, ListChecks, Plus, X, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import {
   generateContentFromJobDescription, 
   addSkill, 
   removeSkill, 
-  updateQuestionnaire 
+  updateQuestionnaire,
+  removeQuestion
 } from '@/services/aiService';
 import { Badge } from '@/components/ui/badge';
 
@@ -20,15 +21,17 @@ const CallForm = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [newSkill, setNewSkill] = useState('');
   const [skillType, setSkillType] = useState<'mandatory' | 'goodToHave'>('mandatory');
+  const [newQuestion, setNewQuestion] = useState('');
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
     candidateName: '',
     candidatePhone: '',
     jobDescription: '',
-    questionnaire: ''
   });
   const [mandatorySkills, setMandatorySkills] = useState<string[]>([]);
   const [goodToHave, setGoodToHave] = useState<string[]>([]);
+  const [questionnaire, setQuestionnaire] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -45,7 +48,7 @@ const CallForm = () => {
       
       setMandatorySkills(generatedContent.mandatorySkills);
       setGoodToHave(generatedContent.goodToHave);
-      setFormData(prev => ({ ...prev, questionnaire: generatedContent.questionnaire }));
+      setQuestionnaire(generatedContent.questionnaire);
       
       toast.success('Job requirements and questionnaire generated');
     } catch (error) {
@@ -82,6 +85,38 @@ const CallForm = () => {
     toast.success(`Removed ${skill}`);
   };
 
+  const handleAddQuestion = () => {
+    if (!newQuestion.trim()) {
+      toast.error('Please enter a question');
+      return;
+    }
+    
+    if (editingQuestionIndex !== null) {
+      // Update existing question
+      const updatedQuestions = [...questionnaire];
+      updatedQuestions[editingQuestionIndex] = newQuestion;
+      setQuestionnaire(updatedQuestions);
+      toast.success('Question updated successfully');
+    } else {
+      // Add new question
+      setQuestionnaire(updateQuestionnaire(questionnaire, newQuestion));
+      toast.success('Question added successfully');
+    }
+    
+    setNewQuestion('');
+    setEditingQuestionIndex(null);
+  };
+
+  const handleEditQuestion = (index: number) => {
+    setNewQuestion(questionnaire[index]);
+    setEditingQuestionIndex(index);
+  };
+
+  const handleRemoveQuestion = (question: string) => {
+    setQuestionnaire(removeQuestion(questionnaire, question));
+    toast.success('Question removed successfully');
+  };
+
   const handleGenerateFromDescription = async () => {
     if (!formData.jobDescription.trim()) {
       toast.error('Please enter a job description');
@@ -94,7 +129,7 @@ const CallForm = () => {
       
       setMandatorySkills(generatedContent.mandatorySkills);
       setGoodToHave(generatedContent.goodToHave);
-      setFormData(prev => ({ ...prev, questionnaire: generatedContent.questionnaire }));
+      setQuestionnaire(generatedContent.questionnaire);
       
       toast.success('Job requirements and questionnaire generated');
     } catch (error) {
@@ -109,14 +144,17 @@ const CallForm = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.candidateName || !formData.candidatePhone || !formData.jobDescription || !formData.questionnaire) {
-      toast.error('Please fill in all fields');
+    if (!formData.candidateName || !formData.candidatePhone || !formData.jobDescription || questionnaire.length === 0) {
+      toast.error('Please fill in all fields and add at least one question');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
+      // Format the questionnaire as a string for the API
+      const formattedQuestionnaire = questionnaire.join('\n\n');
+      
       // Integrate with Vapi API
       const response = await fetch("https://api.vapi.ai/call", {
         method: 'POST',
@@ -130,14 +168,39 @@ const CallForm = () => {
             "model": {
               "provider": "openai",
               "model": "chatgpt-4o-latest",
-            
+              "messages": [
+                {
+                  "role": "system",
+                  "content": `You are Neha, an AI representative conducting initial screening calls for a job position. Use a clear, professional, and friendly tone.
+                  Job Description:
+                  ${formData.jobDescription}
+                  
+                  Required Skills:
+                  ${mandatorySkills.join(", ")}
+                  
+                  Good to Have Skills:
+                  ${goodToHave.join(", ")}`
+                },
+                {
+                  "role": "assistant",
+                  "content": "Hi, this is Neha. I'm calling regarding your job application. This is a brief screening call to understand your experience and skills. Let's get started! Are you available to speak now?"
+                },
+                ...questionnaire.map(question => ({
+                  "role": "assistant",
+                  "content": question
+                })),
+                {
+                  "role": "assistant",
+                  "content": "Thank you for your time! We will review your responses and get back to you soon. Have a great day!"
+                }
+              ]
             }
           },
-        "customer": {
-                "name": formData.candidateName,
-                "number": formData.candidatePhone
-              }
-      }),
+          "customer": {
+            "name": formData.candidateName,
+            "number": formData.candidatePhone
+          }
+        }),
       });
       
       const result = await response.json();
@@ -154,10 +217,10 @@ const CallForm = () => {
         candidateName: '',
         candidatePhone: '',
         jobDescription: '',
-        questionnaire: ''
       });
       setMandatorySkills([]);
       setGoodToHave([]);
+      setQuestionnaire([]);
     } catch (error) {
       console.error('API Error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to schedule call. Please try again.');
@@ -324,19 +387,84 @@ const CallForm = () => {
           </div>
         </div>
         
-        <div className="space-y-2">
-          <label htmlFor="questionnaire" className="text-sm font-medium text-muted-foreground">
-            Questionnaire
-          </label>
-          <Textarea
-            id="questionnaire"
-            name="questionnaire"
-            value={formData.questionnaire}
-            onChange={handleChange}
-            rows={6}
-            placeholder="Enter questions for the AI to ask the candidate..."
-            className="resize-none"
-          />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              Interview Questions
+            </h3>
+            <div className="text-xs text-muted-foreground">
+              {questionnaire.length} question{questionnaire.length !== 1 ? 's' : ''} added
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {questionnaire.map((question, index) => (
+              <div key={index} className="flex items-start gap-2 bg-muted/20 p-3 rounded-md">
+                <div className="flex-1">
+                  <p className="text-sm">{question}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7"
+                    onClick={() => handleEditQuestion(index)}
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7 text-destructive hover:text-destructive/80"
+                    onClick={() => handleRemoveQuestion(question)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            
+            {questionnaire.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No questions added yet</p>
+            )}
+            
+            <div className="space-y-2 pt-2">
+              <Textarea
+                placeholder={editingQuestionIndex !== null ? "Edit question..." : "Add a new interview question..."}
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                className="resize-none"
+                rows={2}
+              />
+              <div className="flex justify-between">
+                {editingQuestionIndex !== null && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setNewQuestion('');
+                      setEditingQuestionIndex(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button 
+                  type="button" 
+                  onClick={handleAddQuestion} 
+                  size="sm"
+                  className="ml-auto"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {editingQuestionIndex !== null ? 'Update Question' : 'Add Question'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       

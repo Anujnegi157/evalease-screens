@@ -7,7 +7,7 @@ const AZURE_OPENAI_API_VERSION = "2025-01-01-preview"; // Updated API version
 export const generateContentFromJobDescription = async (jobDescription: string): Promise<{
   mandatorySkills: string[];
   goodToHave: string[];
-  questionnaire: string;
+  questionnaire: string[];
 }> => {
   try {
     console.log("Generating content from job description using Azure OpenAI:", jobDescription);
@@ -23,28 +23,28 @@ export const generateContentFromJobDescription = async (jobDescription: string):
         messages: [
           {
             role: "system",
-            content: "You are an HR assistant that analyzes job descriptions to extract key information."
+            content: "You are an HR assistant that analyzes job descriptions to extract key information and create relevant interview questions regardless of industry or position type."
           },
           {
             role: "user",
             content: `Please analyze this job description and provide the following: 
-            1. A list of 5 mandatory skills required for this position
+            1. A list of 5-6 mandatory skills required for this position
             2. A list of 3-4 good to have skills 
-            3. A short questionnaire with 5 relevant questions to ask candidates
+            3. A custom questionnaire with 7-8 tailored questions specific to this role (not just generic software development questions)
             
             Format your response as JSON with the following structure:
             {
               "mandatorySkills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
               "goodToHave": ["skill1", "skill2", "skill3", "skill4"],
-              "questionnaire": ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
+              "questionnaire": ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?", "Question 6?", "Question 7?", "Question 8?"]
             }
             
             Job Description:
             ${jobDescription}`
           }
         ],
-        // temperature: 0.7,
-        max_completion_tokens: 800  // Changed from max_tokens to max_completion_tokens
+        temperature: 0.7,
+        max_completion_tokens: 1000
       })
     });
     
@@ -78,7 +78,7 @@ export const generateContentFromJobDescription = async (jobDescription: string):
       return {
         mandatorySkills: jsonData.mandatorySkills || [],
         goodToHave: jsonData.goodToHave || [],
-        questionnaire: jsonData.questionnaire || ""
+        questionnaire: jsonData.questionnaire || []
       };
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
@@ -110,17 +110,24 @@ function extractMandatorySkills(text: string): string[] {
   if (text.toLowerCase().includes("api")) skills.push("API integration experience");
   if (text.toLowerCase().includes("test")) skills.push("Testing methodologies");
   
+  // Add industry-agnostic skills
+  if (text.toLowerCase().includes("manage")) skills.push("Management experience");
+  if (text.toLowerCase().includes("customer") || text.toLowerCase().includes("client")) skills.push("Customer service skills");
+  if (text.toLowerCase().includes("market")) skills.push("Marketing knowledge");
+  if (text.toLowerCase().includes("sales")) skills.push("Sales experience");
+  if (text.toLowerCase().includes("data")) skills.push("Data analysis");
+  
   // Add some generic skills if we don't have enough
   if (skills.length < 3) {
     const genericSkills = [
-      "JavaScript proficiency",
+      "Communication skills",
       "Problem-solving abilities",
       "Team collaboration",
-      "Communication skills"
+      "Time management"
     ];
     
     for (const skill of genericSkills) {
-      if (skills.length < 4) skills.push(skill);
+      if (skills.length < 5) skills.push(skill);
       else break;
     }
   }
@@ -136,12 +143,18 @@ function extractGoodToHaveSkills(text: string): string[] {
   if (text.toLowerCase().includes("aws") || text.toLowerCase().includes("cloud")) skills.push("AWS or cloud services");
   if (text.toLowerCase().includes("ci/cd") || text.toLowerCase().includes("pipeline")) skills.push("CI/CD experience");
   
+  // Add industry-agnostic skills
+  if (text.toLowerCase().includes("present")) skills.push("Presentation skills");
+  if (text.toLowerCase().includes("lead")) skills.push("Leadership experience");
+  if (text.toLowerCase().includes("analytic")) skills.push("Analytical thinking");
+  if (text.toLowerCase().includes("research")) skills.push("Research capabilities");
+  
   // Add some generic "good to have" skills
   const genericSkills = [
-    "Open-source contributions",
-    "Mobile development experience",
-    "UX/UI design knowledge",
-    "Project management experience"
+    "Project management experience",
+    "Public speaking abilities",
+    "Second language proficiency",
+    "Industry certifications"
   ];
   
   for (const skill of genericSkills) {
@@ -152,15 +165,53 @@ function extractGoodToHaveSkills(text: string): string[] {
   return skills;
 }
 
-function generateQuestionnaire(text: string): string {
+function generateQuestionnaire(text: string): string[] {
   // Generate a questionnaire based on the job description
-  return `
-1. Can you describe your experience with modern web development frameworks?
-2. How do you approach learning new technologies? Please provide an example.
-3. Describe a challenging project you worked on and how you solved the problems you encountered.
-4. How do you ensure code quality in your projects?
-5. What's your experience with collaborative development and version control?
-`.trim();
+  const questions = [];
+  
+  // Add some role-specific questions based on keywords
+  if (text.toLowerCase().includes("software") || text.toLowerCase().includes("develop")) {
+    questions.push("Can you describe your experience with modern development frameworks?");
+    questions.push("How do you approach debugging complex issues?");
+  }
+  
+  if (text.toLowerCase().includes("sales") || text.toLowerCase().includes("account")) {
+    questions.push("Describe your approach to building client relationships.");
+    questions.push("How do you handle objections in the sales process?");
+  }
+  
+  if (text.toLowerCase().includes("market") || text.toLowerCase().includes("brand")) {
+    questions.push("What strategies have you used to increase brand awareness?");
+    questions.push("How do you measure the success of a marketing campaign?");
+  }
+  
+  if (text.toLowerCase().includes("manage") || text.toLowerCase().includes("lead")) {
+    questions.push("How do you motivate team members during challenging projects?");
+    questions.push("Describe your approach to performance management.");
+  }
+  
+  if (text.toLowerCase().includes("customer") || text.toLowerCase().includes("support")) {
+    questions.push("How do you handle difficult customer interactions?");
+    questions.push("What's your approach to ensuring customer satisfaction?");
+  }
+  
+  // Add generic questions if we don't have enough
+  const genericQuestions = [
+    "How do you approach learning new skills? Please provide an example.",
+    "Describe a challenging project you worked on and how you solved the problems you encountered.",
+    "How do you prioritize tasks when working on multiple projects?",
+    "Tell me about a time when you had to adapt to a significant change at work.",
+    "What's your experience with collaborative work and cross-functional teams?",
+    "How do you handle constructive criticism?",
+    "Where do you see yourself professionally in the next 3-5 years?"
+  ];
+  
+  for (const question of genericQuestions) {
+    if (questions.length < 7) questions.push(question);
+    else break;
+  }
+  
+  return questions;
 }
 
 // Add new functions to allow manual management of skills
@@ -175,6 +226,13 @@ export const removeSkill = (skillsList: string[], skillToRemove: string): string
   return skillsList.filter(skill => skill !== skillToRemove);
 };
 
-export const updateQuestionnaire = (currentQuestionnaire: string, newQuestionnaire: string): string => {
-  return newQuestionnaire.trim();
+export const updateQuestionnaire = (currentQuestionnaire: string[], newQuestion: string): string[] => {
+  if (!newQuestion.trim()) {
+    return currentQuestionnaire;
+  }
+  return [...currentQuestionnaire, newQuestion.trim()];
+};
+
+export const removeQuestion = (questionnaire: string[], questionToRemove: string): string[] => {
+  return questionnaire.filter(question => question !== questionToRemove);
 };
