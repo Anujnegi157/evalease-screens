@@ -22,9 +22,7 @@ Tasks
 - Twillio upgrade 
 
 - Issues
-    - I have to say hello first
-        - first message 
-    - Questions -> tell me about yourself
-    - last auto cut
+
+z    - last auto cut
     - Transcript -> evaluation System, mongoDB
     
