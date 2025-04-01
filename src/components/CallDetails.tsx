@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Call } from '@/types';
 import { cn } from '@/lib/utils';
 import { 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from './Card';
+import { getScoreFromTranscript } from '@/services/aiService';
 
 interface CallDetailsProps {
   call: Call;
@@ -49,6 +50,23 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
     formattedTime = '';
   }
   console.log(call.toString())
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [scores, setScores] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+
+  const getScore = async () => {
+    setLoading(true);
+    try {
+      const data = await getScoreFromTranscript(call.transcript);
+      setScores(data); // Expected format: { communication: 85, technical: 90, other: 80 }
+    } catch (error) {
+      console.error("Error fetching scores:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in">
@@ -106,12 +124,7 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
                     <p className="font-medium">{call.duration} minutes</p>
                   </div>
                 )}
-                {call.transcript && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Duration</p>
-                    <p className="font-medium">{call.transcript} minutes</p>
-                  </div>
-                )}
+
               </div>
             </Card>
             
@@ -122,25 +135,27 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Overall Fit</p>
-                      <div className={cn(
+                      {scores && scores.overAllFit && <div className={cn(
                         "text-xs px-2 py-1 rounded-full inline-flex items-center",
-                        call.evaluation.fit === 'high' ? "bg-green-100 text-green-800" :
-                        call.evaluation.fit === 'medium' ? "bg-blue-100 text-blue-800" :
+                        scores.overAllFit === 'high' ? "bg-green-100 text-green-800" :
+                        scores.overAllFit === 'medium' ? "bg-blue-100 text-blue-800" :
                         "bg-red-100 text-red-800"
                       )}>
-                        {call.evaluation.fit === 'high' ? <ThumbsUp size={12} className="mr-1" /> :
-                         call.evaluation.fit === 'medium' ? <ThumbsUp size={12} className="mr-1" /> :
+                        {scores.overAllFit === 'high' ? <ThumbsUp size={12} className="mr-1" /> :
+                         scores.overAllFit === 'medium' ? <ThumbsUp size={12} className="mr-1" /> :
                          <ThumbsDown size={12} className="mr-1" />}
                         {call.evaluation.fit.charAt(0).toUpperCase() + call.evaluation.fit.slice(1)} Fit
-                      </div>
+                      </div>}
                     </div>
                     
                     <div className="flex items-center">
                       <div className="bg-primary/10 px-3 py-2 rounded-lg flex items-center">
                         <Star size={16} className="text-primary mr-1" />
-                        <span className="font-medium text-sm">{call.evaluation.score}/10</span>
+                        {scores && scores.totalScore && 
+                          <span className="font-medium text-sm">{scores.totalScore}/10</span>
+                        }
                       </div>
-                    </div>
+                    </div> 
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -149,14 +164,14 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
                         <ThumbsUp size={14} className="text-green-500 mr-1" />
                         Strengths
                       </p>
-                      <ul className="space-y-1">
-                        {call.evaluation.strengths.map((strength, index) => (
+                      {scores && scores.strengths && <ul className="space-y-1">
+                        {scores.strengths.map((strength, index) => (
                           <li key={index} className="text-sm flex items-start">
                             <span className="text-green-500 mr-1">•</span>
                             {strength}
                           </li>
                         ))}
-                      </ul>
+                      </ul>}
                     </div>
                     
                     <div>
@@ -164,22 +179,60 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
                         <ThumbsDown size={14} className="text-amber-500 mr-1" />
                         Areas for Improvement
                       </p>
-                      <ul className="space-y-1">
-                        {call.evaluation.weaknesses.map((weakness, index) => (
+                      {scores && scores.weaknesses && <ul className="space-y-1">
+                        {scores.weaknesses.map((weakness, index) => (
                           <li key={index} className="text-sm flex items-start">
-                            <span className="text-amber-500 mr-1">•</span>
+                            <span className="text-green-500 mr-1">•</span>
                             {weakness}
                           </li>
                         ))}
-                      </ul>
+                      </ul>}
                     </div>
                   </div>
                   
                   <div>
-                    <p className="text-sm font-medium mb-2">Recommendation</p>
-                    <p className="text-sm">{call.evaluation.recommendation}</p>
+                    <div className="p-4 border rounded-lg shadow-sm bg-white">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Recommendation</p>
+                            {/* Button to trigger evaluation */}
+      <button
+        onClick={getScore}
+        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        disabled={loading}
+      >
+        {loading ? "Evaluating..." : "Get Score"}
+      </button>
+
+      {/* Display scores in a table if available */}
+      {scores && (
+        <table className="mt-4 w-full border-collapse border border-gray-200">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2">Skill</th>
+              <th className="border p-2">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border p-2">Communication</td>
+              <td className="border p-2">{scores.communicationSkill}</td>
+            </tr>
+            <tr>
+              <td className="border p-2">Technical</td>
+              <td className="border p-2">{scores.technicalSkill}</td>
+            </tr>
+            <tr>
+              <td className="border p-2">leadership Skills</td>
+              <td className="border p-2">{scores.leadershipSkill}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+                    </div>
+                  </div>
                   </div>
                 </div>
+
               </Card>
             )}
           </div>
@@ -189,35 +242,26 @@ const CallDetails: React.FC<CallDetailsProps> = ({ call, onClose }) => {
             <div>
               <h3 className="text-sm font-medium mb-3 flex items-center">
                 <MessageSquare size={16} className="mr-1" />
-                Call Transcript
+                {call.transcript && (
+                  <div>
+                    <div>
+                      <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-sm font-medium mb-2 text-blue-500 hover:underline"
+                      >
+                        {isExpanded ? "Hide Transcript" : "Show Transcript"}
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="mt-2">
+                          <p className="font-medium">{call.transcript} minutes</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </h3>
-              <Card className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-start">
-                    <div className="bg-primary/10 text-primary p-2 rounded-full mr-3">
-                      <Phone size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Neha (AI Interviewer)</p>
-                      <p className="text-sm">Hello, this is Neha calling from ScreenSage. Am I speaking with {call.candidateName}?</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <div className="bg-gray-100 p-2 rounded-full mr-3">
-                      <MessageSquare size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{call.candidateName}</p>
-                      <p className="text-sm">Yes, this is {call.candidateName}.</p>
-                    </div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <button className="text-primary text-sm hover:underline">View Full Transcript</button>
-                  </div>
-                </div>
-              </Card>
+
             </div>
           )}
         </div>

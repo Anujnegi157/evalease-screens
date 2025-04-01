@@ -206,6 +206,10 @@ const CallForm = () => {
         body: JSON.stringify({
           "phoneNumberId": "0b3b9e40-1cfe-4eea-be52-a3bd0df178b8",
           "assistant": {
+            "voice": {
+              "provider": "vapi",
+              "voiceId": "Neha"
+            },
             "firstMessage": firstMessage,
             "model": {
               "provider": "openai",

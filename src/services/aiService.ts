@@ -234,3 +234,107 @@ export const updateQuestionnaire = (currentQuestionnaire: string[], newQuestion:
 export const removeQuestion = (questionnaire: string[], questionToRemove: string): string[] => {
   return questionnaire.filter(question => question !== questionToRemove);
 };
+
+export const getScoreFromTranscript = async (transcript: string): Promise<{
+  technicalSkill: number;
+  communicationSkill: number;
+  leadershipSkill: number;
+  strengths: string[];
+  weaknesses: string[];
+  overAllFit: string;
+  totalScore: number;
+}> => {
+  try {
+    console.log("Analyzing interview transcript using Azure OpenAI:", transcript);
+
+    // Call Azure OpenAI API
+    const response = await fetch(`${AZURE_OPENAI_ENDPOINT}openai/deployments/o3-mini/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": AZURE_OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: "You are an AI assistant that evaluates interview transcripts. Assess the candidate’s technical, communication, and leadership skills on a scale of 1-10. Also, identify key strengths and weaknesses from the interview."
+          },
+          {
+            role: "user",
+            content: `Please analyze this interview transcript and provide the following:
+            1. A technical skill score (1-10)
+            2. A communication skill score (1-10)
+            3. A leadership skill score (1-10)
+            4. A list of key strengths (3-5 points)
+            5. A list of weaknesses (3-5 points)
+            
+            Format your response as JSON with the following structure:
+            {
+              "technicalSkill": <number>,
+              "communicationSkill": <number>,
+              "leadershipSkill": <number>,
+              "strengths": ["strength1", "strength2", "strength3"],
+              "weaknesses": ["weakness1", "weakness2", "weakness3"]
+            }
+            
+            Interview Transcript:
+            ${transcript}`
+          }
+        ],
+        max_completion_tokens: 1000
+      })
+    });
+
+    if (!response.ok) {
+      console.error("Azure OpenAI API Error:", await response.text());
+      throw new Error("Failed to analyze interview transcript");
+    }
+
+    const data = await response.json();
+    console.log("Azure OpenAI API Response:", data);
+
+    // Parse the AI response
+    try {
+      const content = data.choices[0].message.content;
+      console.log("Raw content:", content);
+      let jsonData;
+
+      try {
+        jsonData = JSON.parse(content);
+      } catch (jsonError) {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("Could not parse JSON from response");
+        }
+      }
+
+      return {
+        technicalSkill: jsonData.technicalSkill || 0,
+        communicationSkill: jsonData.communicationSkill || 0,
+        leadershipSkill: jsonData.leadershipSkill || 0,
+        strengths: jsonData.strengths || [],
+        weaknesses: jsonData.weaknesses || [],
+        totalScore : (
+          ((jsonData.technicalSkill || 0) + 
+           (jsonData.communicationSkill || 0) + 
+           (jsonData.leadershipSkill || 0)) / 3
+        ).toFixed(2),
+        overAllFit:
+          ((jsonData.technicalSkill || 0) + (jsonData.communicationSkill || 0) + (jsonData.leadershipSkill || 0)) / 3 >= 8
+            ? "high"
+            : ((jsonData.technicalSkill || 0) + (jsonData.communicationSkill || 0) + (jsonData.leadershipSkill || 0)) / 3 >= 6
+            ? "medium"
+            : "low",
+      };
+    } catch (parseError) {
+      console.error("Error parsing AI response:", parseError);
+      throw new Error("Failed to parse AI response");
+    }
+  } catch (error) {
+    console.error("Error analyzing transcript:", error);
+    throw new Error("Failed to analyze transcript");
+  }
+};
